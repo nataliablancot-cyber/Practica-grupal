@@ -22,22 +22,20 @@ app = FastAPI(
     description="Servidor de datos para la gestión de bibliotecas.",
     version="1.0.0",
 )
-
+from database import SessionLocal
 @app.get("/libros/")
 def retrieve_data():
     # EDUCATIONAL INEFFICIENCY: Reading CSV on every request
     # Students should optimize this by using a database or caching
     try:
-        todosmisdatos = pd.read_csv('./books.csv', sep=';')
-        todosmisdatos = todosmisdatos.fillna(0)
-        todosmisdatosdict = todosmisdatos.to_dict(orient='records')
-        listado = ListadoLibros()
-        listado.libros = todosmisdatosdict
-        return listado
+        db = SessionLocal()
+        libros = db.query(ListadoLibros).all()
+        db.close()
+        return {"libros": libros}
     except Exception as e:
         return {"error": str(e)}
 
 @app.post("/prestamos/")
 async def create_loan(libro_id: int):
     # This is a stub for students to implement
-    return {"message": "Préstamo creado (no realmente)", "libro_id": libro_id} #nchc
+    return {"message": "Préstamo creado (no realmente)", "libro_id": libro_id} #nvdhfhdf
