@@ -59,6 +59,28 @@ def crear_libro(libro: Libro):
 
 
 @app.post("/prestamos/")
-async def create_loan(libro_id: int):
+def create_loan(libro_id: int):
+    try:
+        db = SessionLocal()
+        libro= db.query(Book).filter(Book.id == libro_id).first()
+
+        if not libro:
+            db.close()
+            return {"error": "Este libro no existe"}
+
+        if not libro.disponible:
+            db.close()
+            return {"error": "Este libro no está disponible"}
+
+        libro.disponible = False
+        db.commit()
+        db.refresh(libro)
+        db.close()
+
+        return {"message": "Préstamo creado correctamente",
+                "libro": libro}
+    except Exception as e:
+        return {"error": str(e)}
+
     # This is a stub for students to implement
     return {"message": "Préstamo creado (no realmente)", "libro_id": libro_id} #nvdhfhdf
