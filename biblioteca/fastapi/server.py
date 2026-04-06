@@ -2,6 +2,9 @@ from fastapi import FastAPI
 import pandas as pd
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
+from database import SessionLocal, Base, engine
+from models import Book
+Base.metadata.create_all(bind=engine)
 
 class BaseModel(PydanticBaseModel):
     class Config:
@@ -22,18 +25,38 @@ app = FastAPI(
     description="Servidor de datos para la gestión de bibliotecas.",
     version="1.0.0",
 )
-from database import SessionLocal
+
 @app.get("/libros/")
 def retrieve_data():
     # EDUCATIONAL INEFFICIENCY: Reading CSV on every request
     # Students should optimize this by using a database or caching
     try:
         db = SessionLocal()
-        libros = db.query(ListadoLibros).all()
+        libros = db.query(Book).all()
         db.close()
         return {"libros": libros}
     except Exception as e:
         return {"error": str(e)}
+@app.post("/libros/")
+def crear_libro(libro: Libro):
+    try:
+        db = SessionLocal()
+        nuevo_libro = Book(titulo=libro.titulo,
+                           autor=libro.autor,
+                           genero = libro.genero,
+                           disponible=libro.disponible)
+        db.add(nuevo_libro)
+        db.commit()
+        db.refresh(nuevo_libro)
+        db.close()
+
+        return nuevo_libro
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+
 
 @app.post("/prestamos/")
 async def create_loan(libro_id: int):
