@@ -7,3 +7,4 @@ class Book(Base):
     autor = Column(String, nullable=False)
     genero = Column(String, nullable=False)
     disponible = Column(Boolean, nullable=False)
+
