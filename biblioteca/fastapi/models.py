@@ -1,4 +1,4 @@
-import sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean
 from database import Base
 class Book(Base):
     __tablename__ = "books"

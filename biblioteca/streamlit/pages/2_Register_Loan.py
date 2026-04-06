@@ -6,7 +6,7 @@ st.set_page_config(page_title="Préstamo de Libros", page_icon="✍️")
 st.markdown("# Gestionar Préstamo")
 st.write("Formulario para realizar un préstamo.")
 
-API_URL = "http://fastapi:8000"
+API_URL = "http://localhost:8001"
 
 with st.form("loan_form"):
     libro_id = st.number_input("ID del Libro", min_value=1, step=1)

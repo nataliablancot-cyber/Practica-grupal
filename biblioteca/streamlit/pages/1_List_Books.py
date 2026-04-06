@@ -9,7 +9,7 @@ st.write("Listado de libros disponibles en la biblioteca.")
 
 # INEFFICIENCY: Hardcoded request to localhost
 # Students should extract configuration variables
-API_URL = "http://fastapi:8000"
+API_URL = "http://localhost:8001"
 
 try:
     response = requests.get(f"{API_URL}/libros/")
