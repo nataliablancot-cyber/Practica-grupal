@@ -1,10 +1,10 @@
 import streamlit as st
 import time
 
-st.set_page_config(page_title='Gestor de Bibliotecas', layout='wide', page_icon="📚")
+st.set_page_config(page_title='Gestor de Bibliotecas', layout='wide')
 
 # Placeholder for logo or header
-st.write("# Gestor de Bibliotecas 📚")
+st.write("# Gestor de Bibliotecas ")
 
 st.markdown(
     """Qué puedes hacer
