@@ -7,23 +7,41 @@ st.set_page_config(page_title="Catálogo de Libros", page_icon="📖")
 st.markdown("# Catálogo de Libros")
 st.write("Listado de libros disponibles en la biblioteca.")
 
-# INEFFICIENCY: Hardcoded request to localhost
-# Students should extract configuration variables
 API_URL = "http://localhost:8001"
 
 try:
-    response = requests.get(f"{API_URL}/libros/")
-    if response.status_code == 200:
-        data = response.json()
-        libros = data.get("libros", [])
-        
-        if libros:
-            df = pd.DataFrame(libros)
-            st.dataframe(df)
+    response = requests.get(f"{API_URL}/libros/", timeout=10)
+    response.raise_for_status()
+
+    data = response.json()
+    libros = data.get("libros", [])
+
+    if libros:
+        df = pd.DataFrame(libros)
+
+        busqueda = st.text_input("Buscar por título o autor")
+        solo_disponibles = st.checkbox("Mostrar solo disponibles")
+
+        if busqueda:
+            df = df[
+                df["titulo"].astype(str).str.contains(busqueda, case=False, na=False) |
+                df["autor"].astype(str).str.contains(busqueda, case=False, na=False)
+            ]
+
+        if solo_disponibles:
+            df = df[df["disponible"] == True]
+
+        st.write(f"Total de libros mostrados: {len(df)}")
+
+        if df.empty:
+            st.info("No se han encontrado libros con ese criterio.")
         else:
-            st.warning("No hay libros disponibles.")
+            st.dataframe(df, use_container_width=True)
     else:
-        st.error(f"Error al obtener libros: {response.status_code}")
-except Exception as e:
+        st.warning("No hay libros disponibles.")
+
+except requests.exceptions.RequestException as e:
     st.error(f"Error de conexión con el servidor: {e}")
-    st.info("Asegúrate de que el contenedor 'fastapi' está corriendo.")
+    st.info("Asegúrate de que FastAPI está funcionando en http://localhost:8001")
+except Exception as e:
+    st.error(f"Se ha producido un error: {e}")
