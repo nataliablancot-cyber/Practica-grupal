@@ -30,3 +30,17 @@ def normalizar_texto(texto):
     texto = texto.lower()   # Pasamos a minúsculas
     return texto
 
+def filtrar_libros(libros, busqueda):
+    #Función para filtrar libros por título o autor
+    resultado = []
+    busqueda = normalizar_texto(busqueda)
+
+    for libro in libros:
+        titulo = normalizar_texto(libro.get("titulo", ""))
+        autor = normalizar_texto(libro.get("autor", ""))
+
+        #Comprobamos si coincide con título o autor
+        if busqueda in titulo or busqueda in autor:
+            resultado.append(libro)
+
+    return resultado
