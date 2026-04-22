@@ -15,3 +15,11 @@ def campo_vacio(texto):
     return False
 
 # cambio para commit
+
+def email_valido(email):
+    # Esta función comprueba si un email tiene un formato básico válido
+    # Comprobamos que tenga @ y punto
+    if "@" in email and "." in email:
+        return True  # si cumple, es válido
+    # si no cumple, devolvemos False
+    return False
