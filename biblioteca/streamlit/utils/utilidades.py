@@ -23,3 +23,10 @@ def email_valido(email):
         return True  # si cumple, es válido
     # si no cumple, devolvemos False
     return False
+
+def normalizar_texto(texto):
+    #Convertimos el texto a minúsculas y quita espacios
+    texto = texto.strip()   # Sim espacios
+    texto = texto.lower()   # Pasamos a minúsculas
+    return texto
+
