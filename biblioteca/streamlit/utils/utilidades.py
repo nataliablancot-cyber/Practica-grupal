@@ -44,3 +44,17 @@ def filtrar_libros(libros, busqueda):
             resultado.append(libro)
 
     return resultado
+
+def validar_libro(titulo, autor, genero):
+    #Comprobamos que los campos no estén vacíos
+
+    if campo_vacio(titulo):
+        return False
+
+    if campo_vacio(autor):
+        return False
+
+    if campo_vacio(genero):
+        return False
+
+    return True
