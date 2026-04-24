@@ -1,5 +1,4 @@
-from fastapi import FastAPI
-import pandas as pd
+from fastapi import FastAPI, HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
 from database import SessionLocal, Base, engine
@@ -30,17 +29,16 @@ app = FastAPI(
 def retrieve_data():
     # EDUCATIONAL INEFFICIENCY: Reading CSV on every request
     # Students should optimize this by using a database or caching
-    try:
+    with SessionLocal() as db:
         db = SessionLocal()
         libros = db.query(Book).all()
-        db.close()
+
         return {"libros": libros}
     except Exception as e:
         return {"error": str(e)}
 @app.post("/libros/")
 def crear_libro(libro: Libro):
-    try:
-        db = SessionLocal()
+    with SessionLocal() as db:
         nuevo_libro = Book(titulo=libro.titulo,
                            autor=libro.autor,
                            genero = libro.genero,
@@ -48,9 +46,9 @@ def crear_libro(libro: Libro):
         db.add(nuevo_libro)
         db.commit()
         db.refresh(nuevo_libro)
-        db.close()
-
         return nuevo_libro
+
+
     except Exception as e:
         return {"error": str(e)}
 
@@ -60,17 +58,14 @@ def crear_libro(libro: Libro):
 
 @app.post("/prestamos/")
 def create_loan(libro_id: int):
-    try:
-        db = SessionLocal()
+    with SessionLocal() as db:
         libro= db.query(Book).filter(Book.id == libro_id).first()
 
         if not libro:
-            db.close()
-            return {"error": "Este libro no existe"}
+            raise HTTPException(status_code=404, detail="Este libro no existe")
 
         if not libro.disponible:
-            db.close()
-            return {"error": "Este libro no está disponible"}
+            raise HTTPException(status_code=400, detail="Este libro no está disponible")
 
         libro.disponible = False
         db.commit()
@@ -83,4 +78,6 @@ def create_loan(libro_id: int):
         return {"error": str(e)}
 
     # This is a stub for students to implement
-    return {"message": "Préstamo creado (no realmente)", "libro_id": libro_id} #nvdhfhdf
+    return {"message": "Préstamo creado (no realmente)", "libro_id": libro_id}
+
+
