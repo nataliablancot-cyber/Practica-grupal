@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
 from database import SessionLocal, Base, engine
-from models import Book
+from models import Book, Loan
+import datetime
 Base.metadata.create_all(bind=engine)
 
 class BaseModel(PydanticBaseModel):
@@ -57,7 +58,7 @@ def crear_libro(libro: Libro):
 
 
 @app.post("/prestamos/")
-def create_loan(libro_id: int):
+def create_loan(libro_id: int, usuario_id: str):
     with SessionLocal() as db:
         libro= db.query(Book).filter(Book.id == libro_id).first()
 
@@ -68,12 +69,38 @@ def create_loan(libro_id: int):
             raise HTTPException(status_code=400, detail="Este libro no está disponible")
 
         libro.disponible = False
+        nuevo_prestamo = Loan(
+            usuario_id =usuario_id,
+            libro_id = libro_id,
+            fecha_prestamo = datetime.date.today(),
+            estado = "Activo"
+    )
+        db.add(nuevo_prestamo)
         db.commit()
-        db.refresh(libro)
-        db.close()
+        db.refresh(nuevo_prestamo)
 
         return {"message": "Préstamo creado correctamente",
                 "libro": libro}
+
+    @app.get ("/prestamos/historial")
+    def historial_prestamos(usuario_id: str):
+        with SessionLocal() as db:
+            prestamos = db.query(Loan).filter(Loan.usuario_id == usuario_id).all()
+
+            resultado = []
+            for prestamo in prestamos:
+                libro = db.query(Book).filter(Book.id == prestamo.libro_id).first()
+                resultado.append({
+                    "usuario_id": prestamo.usuario_id,
+                    "libro_id": prestamo.libro_id,
+                    "titulo": libro.titulo if libro else "Desconocido",
+                    "fecha_prestamo": prestamo.fecha_prestamo,
+                    "fecha_devolucion": prestamo.fecha_devolucion,
+                    "estado": prestamo.estado
+                })
+
+            return {"prestamos": resultado}
+
     except Exception as e:
         return {"error": str(e)}
 
