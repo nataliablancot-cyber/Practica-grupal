@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
 from database import SessionLocal, Base, engine
-from models import Book, Loan
+from models import Book, Loan , User
 import datetime
 Base.metadata.create_all(bind=engine)
 
