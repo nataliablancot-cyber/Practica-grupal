@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from typing import List
-from pydantic import BaseModel as PydanticBaseModel
+from pydantic import BaseModel as PydanticBaseModel, Field, ConfigDict
 from database import SessionLocal, Base, engine
 from models import Book, Loan , User
 import datetime
@@ -17,12 +17,16 @@ class LibroCreate(BaseModel):
     disponible: bool
 
 class LibroRead(LibroCreate):
-    id: int
     class Config:
-        from_Atributes = True
+        model_config = ConfigDict(from_attributes=True)
+        id: int
 
 class ListadoLibros(BaseModel):
     libros: list[LibroRead] = Field(default_factory=list)
+class UsuarioCreate(BaseModel):
+    nombre: str
+    email: str
+    activo: bool = True
 
 app = FastAPI(
     title="Gestor de Bibliotecas API",
@@ -54,11 +58,12 @@ def crear_usuario(usuario: UsuarioCreate):
 
         return nuevo_usuario
 
+
 @app.get("/libros/")
 def retrieve_data():
     with SessionLocal() as db:
-        db = SessionLocal()
-        libros = db.query(Book).filter(Book.id == libro_id).first()
+        try:
+         libros = db.query(Book).filter(Book.id == libro_id).first()
 
         return {"libros": libros}
     except Exception as e:
