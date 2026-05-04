@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean , DateTime
+from sqlalchemy import Column, Integer, String, Boolean , Date
 from database import Base
 class Book(Base):
     __tablename__ = "books"
