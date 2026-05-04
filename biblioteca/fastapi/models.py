@@ -1,3 +1,4 @@
+import datetime
 from sqlalchemy import Column, Integer, String, Boolean , Date
 from database import Base
 class Book(Base):
@@ -18,7 +19,7 @@ class Loan(Base):
     estado = Column(String, default="Activo")
 
 class User(Base):
-    _tablename_ = "users"
+    __tablename__ = "users"
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     nombre = Column(String, nullable=False)
