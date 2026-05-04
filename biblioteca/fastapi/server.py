@@ -17,9 +17,9 @@ class LibroCreate(BaseModel):
     disponible: bool
 
 class LibroRead(LibroCreate):
-    class Config:
-        model_config = ConfigDict(from_attributes=True)
-        id: int
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ListadoLibros(BaseModel):
     libros: list[LibroRead] = Field(default_factory=list)
@@ -63,26 +63,25 @@ def crear_usuario(usuario: UsuarioCreate):
 def retrieve_data():
     with SessionLocal() as db:
         try:
-         libros = db.query(Book).filter(Book.id == libro_id).first()
-
-        return {"libros": libros}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+            libros = db.query(Book).all()
+            return {"libros": libros}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 @app.post("/libros/")
-def crear_libro(libro: Libro):
+def crear_libro(libro: LibroCreate):
     with SessionLocal() as db:
-        nuevo_libro = Book(titulo=libro.titulo,
+        try:
+            nuevo_libro = Book(titulo=libro.titulo,
                            autor=libro.autor,
                            genero = libro.genero,
                            disponible=libro.disponible)
-        db.add(nuevo_libro)
-        db.commit()
-        db.refresh(nuevo_libro)
-        return nuevo_libro
+            db.add(nuevo_libro)
+            db.commit()
+            db.refresh(nuevo_libro)
+            return nuevo_libro
 
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
 
@@ -90,34 +89,35 @@ def crear_libro(libro: Libro):
 
 
 @app.post("/prestamos/")
-def create_loan(libro_id: int, usuario_id: str):
+def create_loan(libro_id: int, usuario_id:int):
     with SessionLocal() as db:
-        libro= db.query(Book).filter(Book.id == libro_id).first()
+        try:
+            libro= db.query(Book).filter(Book.id == libro_id).first()
 
-        if not libro:
-            raise HTTPException(status_code=404, detail="Este libro no existe")
+            if not libro:
+                raise HTTPException(status_code=404, detail="Este libro no existe")
 
-        if not libro.disponible:
-            raise HTTPException(status_code=400, detail="Este libro no está disponible")
+            if not libro.disponible:
+                raise HTTPException(status_code=400, detail="Este libro no está disponible")
 
-        libro.disponible = False
-        nuevo_prestamo = Loan(
-            usuario_id =usuario_id,
-            libro_id = libro_id,
-            fecha_prestamo = datetime.date.today(),
-            estado = "Activo"
-    )
-        db.add(nuevo_prestamo)
-        db.commit()
-        db.refresh(nuevo_prestamo)
+            libro.disponible = False
+            nuevo_prestamo = Loan(
+                usuario_id =usuario_id,
+                libro_id = libro_id,
+                fecha_prestamo = datetime.date.today(),
+                estado = "Activo"
+            )
+            db.add(nuevo_prestamo)
+            db.commit()
+            db.refresh(nuevo_prestamo)
 
-        return {"message": "Préstamo creado correctamente",
+            return {"message": "Préstamo creado correctamente",
                 "libro": libro}
 
         except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
     @app.get ("/prestamos/historial")
     def historial_prestamos(usuario_id: str):
