@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import streamlit as st
 import pandas as pd
 
@@ -47,3 +48,42 @@ if usuario:
 
 else:
     st.info("Introduce un usuario para consultar su historial.")
+=======
+import os
+
+import pandas as pd
+import requests
+import streamlit as st
+
+
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+
+st.title("Historial de préstamos")
+
+usuario_id = st.text_input("ID de usuario")
+
+if usuario_id:
+    try:
+        response = requests.get(
+            f"{API_URL}/prestamos/historial",
+            params={"usuario_id": int(usuario_id)},
+            timeout=10,
+        )
+
+        if response.status_code == 200:
+            prestamos = response.json().get("prestamos", [])
+            if prestamos:
+                st.table(pd.DataFrame(prestamos))
+            else:
+                st.info("Este usuario no tiene préstamos registrados.")
+        else:
+            st.error(f"No se ha podido consultar el historial. Código: {response.status_code}")
+            st.text(response.text)
+
+    except ValueError:
+        st.error("Introduce un ID de usuario numérico.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error de conexión con el servidor: {e}")
+else:
+    st.info("Introduce un usuario para consultar su historial.")
+>>>>>>> 2f8987a (cambi en el error de presatmos)

@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import requests
+import os
 
 st.set_page_config(page_title="Catálogo de Libros", page_icon="📖")
 
 st.markdown("# Catálogo de Libros")
 st.write("Listado de libros disponibles en la biblioteca.")
 
-API_URL = "http://localhost:8001"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 try:
     response = requests.get(f"{API_URL}/libros/", timeout=10)
@@ -42,6 +43,6 @@ try:
 
 except requests.exceptions.RequestException as e:
     st.error(f"Error de conexión con el servidor: {e}")
-    st.info("Asegúrate de que FastAPI está funcionando en http://localhost:8001")
+    st.info(f"Asegúrate de que FastAPI está funcionando en {API_URL}")
 except Exception as e:
     st.error(f"Se ha producido un error: {e}")
