@@ -1,21 +1,13 @@
 import streamlit as st
 import pandas as pd
 
-st.title("Calendario de préstamos")
+st.warning("El calendario todavía no está conectado al historial real de préstamos.")
 
-st.write("Vista de los préstamos registrados.")
+st.write("Para que esta pantalla se actualice, el backend debe devolver los préstamos con:")
+st.write("- usuario")
+st.write("- libro")
+st.write("- fecha de préstamo")
+st.write("- fecha de devolución")
+st.write("- estado")
 
-# Datos de ejemplo
-datos = [
-    {"titulo": "1984", "fecha": "2026-04-01", "estado": "Activo"},
-    {"titulo": "Don Quijote", "fecha": "2026-03-10", "estado": "Devuelto"}
-]
-
-df = pd.DataFrame(datos)
-
-st.write("Préstamos:")
-st.table(df)
-
-st.write("Estados:")
-st.write("- Activo → préstamo en curso")
-st.write("- Devuelto → préstamo finalizado")
+st.info("Esta pantalla queda preparada para integrarse cuando exista el endpoint de historial.")

@@ -1,12 +1,13 @@
 import streamlit as st
 import requests
+import os
 
 st.set_page_config(page_title="Préstamo de Libros")
 
 st.markdown("# Gestionar Préstamo")
 st.write("Formulario para realizar un préstamo.")
 
-API_URL = "http://localhost:8001"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 with st.form("loan_form"):
     libro_id = st.number_input("ID del Libro", min_value=1, step=1)
@@ -20,7 +21,10 @@ with st.form("loan_form"):
             try:
                 response = requests.post(
                     f"{API_URL}/prestamos/",
-                    params={"libro_id": int(libro_id)},
+                    params={
+                        "libro_id": int(libro_id),
+                        "usuario_id": int(usuario_id),
+                    },
                     timeout=10
                 )
 
