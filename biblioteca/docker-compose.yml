@@ -11,8 +11,10 @@ services:
       - "8000:8000"
     networks:
       - deploy_network
+    environment:
+      - DATABASE_URL=sqlite:////data/database.db
     volumes:
-      - ./fastapi/books.csv:/fastapi/books.csv
+      - mis_datos:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/libros/"]
