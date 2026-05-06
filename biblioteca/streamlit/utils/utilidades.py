@@ -1,37 +1,24 @@
-def conectar ():
+def conectar():
     return True
+
+
 def limpiar_texto(texto):
-    # Quitamos espacios al principio y al final
-    texto = texto.strip()
-    return texto
+    return texto.strip()
 
 
 def campo_vacio(texto):
-    # Comprobamos si está vacío o solo tiene espacios
-    if texto == "":
-        return True
-    if texto.strip() == "":
-        return True
-    return False
+    return texto.strip() == ""
 
-# cambio para commit
 
 def email_valido(email):
-    # Esta función comprueba si un email tiene un formato básico válido
-    # Comprobamos que tenga @ y punto
-    if "@" in email and "." in email:
-        return True  # si cumple, es válido
-    # si no cumple, devolvemos False
-    return False
+    return "@" in email and "." in email
+
 
 def normalizar_texto(texto):
-    #Convertimos el texto a minúsculas y quita espacios
-    texto = texto.strip()   # Sim espacios
-    texto = texto.lower()   # Pasamos a minúsculas
-    return texto
+    return texto.strip().lower()
+
 
 def filtrar_libros(libros, busqueda):
-    #Función para filtrar libros por título o autor
     resultado = []
     busqueda = normalizar_texto(busqueda)
 
@@ -39,15 +26,13 @@ def filtrar_libros(libros, busqueda):
         titulo = normalizar_texto(libro.get("titulo", ""))
         autor = normalizar_texto(libro.get("autor", ""))
 
-        #Comprobamos si coincide con título o autor
         if busqueda in titulo or busqueda in autor:
             resultado.append(libro)
 
     return resultado
 
-def validar_libro(titulo, autor, genero):
-    #Comprobamos que los campos no estén vacíos
 
+def validar_libro(titulo, autor, genero):
     if campo_vacio(titulo):
         return False
 
@@ -59,15 +44,12 @@ def validar_libro(titulo, autor, genero):
 
     return True
 
+
 def validar_usuario(nombre, email):
-    # comprobamos que el nombre no esté vacío
     if campo_vacio(nombre):
         return False
 
-    # comprobamos que el email sea válido
     if not email_valido(email):
         return False
 
     return True
-
-

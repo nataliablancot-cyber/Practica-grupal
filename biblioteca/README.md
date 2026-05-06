@@ -30,6 +30,14 @@ Debéis aplicar y documentar en este README cómo habéis cumplido con:
 *   **ISP** (Interface Segregation Principle)
 *   **DIP** (Dependency Inversion Principle)
 
+### Aplicación en este proyecto
+
+*   **SRP**: la persistencia queda en `fastapi/database.py`, los modelos en `fastapi/models.py`, la API en `fastapi/server.py` organizada por routers y la UI en páginas de Streamlit.
+*   **OCP**: los endpoints se agrupan con `APIRouter`, por lo que se pueden añadir nuevos módulos de API sin modificar la estructura principal de la aplicación.
+*   **LSP**: las respuestas de API se definen con modelos Pydantic consistentes (`LibroRead`, `UsuarioRead`, `PrestamoRead`) que pueden usarse donde se espera su contrato base.
+*   **ISP**: la interfaz HTTP se divide por responsabilidades (`/libros`, `/usuarios`, `/prestamos`) para que cada pantalla consuma solo las operaciones que necesita.
+*   **DIP**: la aplicación depende de una URL de base de datos configurable mediante `DATABASE_URL`, no de una implementación fija embebida en la UI.
+
 ##  Metodología: eXtreme Programming (XP)
 
 Durante los 3 sprints de la práctica, es OBLIGATORIO:
@@ -38,6 +46,14 @@ Durante los 3 sprints de la práctica, es OBLIGATORIO:
 *   **Refactoring Continuo**: Mejorar el código sin cambiar su comportamiento externo.
 *   **Integración Continua**: GitHub Actions activo.
 *   **Stand-ups Diarios**: Registro en `DAILYS.md` (fecha, asistentes, qué hice, qué haré, bloqueos).
+
+### Evidencias XP
+
+*   **Pair Programming**: debe reflejarse en los commits con `Co-authored-by` cuando trabajen dos personas en el mismo cambio.
+*   **TDD**: se incluyen pruebas unitarias e integración básica contra BD temporal; el workflow de GitHub Actions ejecuta `pytest` en cada push y pull request.
+*   **Refactoring Continuo**: el backend se ha reorganizado con routers, modelos Pydantic, excepciones propias, logging y sesiones de BD gestionadas con context manager.
+*   **Integración Continua**: `.github/workflows/tests.yml` instala dependencias y ejecuta la suite de tests con cobertura.
+*   **Stand-ups**: el registro se mantiene en `../DAILYS.md`.
 
 ---
 
@@ -89,5 +105,38 @@ El esqueleto actual es intencionadamente ineficiente.
 1.  **Eliminar la dependencia del CSV**: Migrar a una base de datos real usando SQLAlchemy.
 2.  **Separar responsabilidades**: Que la UI no hable directamente con la BD, sino a través de Servicios/API.
 3.  **Dockerizar**: Mantener/Mejorar el `docker-compose.yml` para que todo arranque con un comando.
+
+## Estado actual de implementación
+
+*   La API usa SQLAlchemy con SQLite y carga un catálogo inicial desde código, no desde `books.csv`.
+*   Docker Compose arranca dos contenedores: FastAPI y Streamlit. La base SQLite se guarda en el volumen `mis_datos`.
+*   Streamlit consume la API mediante `API_URL`; no accede directamente a la base de datos.
+*   El catálogo y las consultas de préstamos usan `st.cache_data` para reducir peticiones repetidas.
+*   El backend incluye logging con niveles `INFO`, `WARNING` y `ERROR`.
+*   Se usan excepciones personalizadas para duplicados, recursos no encontrados y préstamos no permitidos.
+*   Se usan `@property` en modelos SQLAlchemy, context managers para sesiones y un generador para cargar libros iniciales.
+
+## Ejecución
+
+Desde la carpeta `biblioteca`:
+
+```bash
+docker-compose up --build
+```
+
+Servicios:
+
+*   FastAPI: `http://localhost:8000`
+*   Streamlit: `http://localhost:8501`
+
+## Tests
+
+Desde la raíz del repositorio:
+
+```bash
+pytest
+```
+
+La configuración de `pytest.ini` activa cobertura mínima del 80%.
 
 ¡Mucho ánimo y a programar! 💻🔥

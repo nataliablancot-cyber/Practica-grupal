@@ -1,24 +1,62 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel as PydanticBaseModel, Field, ConfigDict
-from database import SessionLocal, Base, engine
-from models import Book, Loan, User
 import datetime
+import logging
+from contextlib import asynccontextmanager
+from typing import Iterable
 
-Base.metadata.create_all(bind=engine)
+from fastapi import APIRouter, FastAPI, HTTPException
+from pydantic import BaseModel as PydanticBaseModel, ConfigDict, Field
+
+try:
+    from .database import Base, engine, get_db_session
+    from .models import Book, Loan, User
+except ImportError:
+    from database import Base, engine, get_db_session
+    from models import Book, Loan, User
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("biblioteca.api")
+
+
+class BibliotecaError(Exception):
+    status_code = 400
+    detail = "Error en la biblioteca"
+
+    def __init__(self, detail: str | None = None):
+        if detail is not None:
+            self.detail = detail
+        super().__init__(self.detail)
+
+
+class RecursoNoEncontrado(BibliotecaError):
+    status_code = 404
+
+
+class RecursoDuplicado(BibliotecaError):
+    status_code = 400
+
+
+class PrestamoNoPermitido(BibliotecaError):
+    status_code = 400
+
 
 class BaseModel(PydanticBaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
 
 class LibroCreate(BaseModel):
     titulo: str
     autor: str
     genero: str
-    disponible: bool
+    disponible: bool = True
+
 
 class LibroRead(LibroCreate):
     id: int
-    model_config = ConfigDict(from_attributes=True)
+    etiqueta: str
 
 
 class ListadoLibros(BaseModel):
@@ -31,129 +69,201 @@ class UsuarioCreate(BaseModel):
     activo: bool = True
 
 
-app = FastAPI(
-    title="Gestor de Bibliotecas API",
-    description="Servidor de datos para la gestión de bibliotecas.",
-    version="1.0.0",
-)
+class UsuarioRead(UsuarioCreate):
+    id: int
+    esta_activo: bool
 
 
-@app.post("/usuarios/")
-def crear_usuario(usuario: UsuarioCreate):
-    with SessionLocal() as db:
-        usuario_existente = db.query(User).filter(
-            User.email == usuario.email
-        ).first()
+class PrestamoCreate(BaseModel):
+    libro_id: int
+    usuario_id: int
 
-        if usuario_existente:
-            raise HTTPException(
-                status_code=400,
-                detail="Ya existe un usuario con ese email"
-            )
 
-        nuevo_usuario = User(
-            nombre=usuario.nombre,
-            email=usuario.email,
-            activo=usuario.activo,
+class PrestamoRead(BaseModel):
+    id: int
+    usuario_id: int
+    libro_id: int
+    titulo: str
+    usuario: str
+    fecha_prestamo: datetime.date
+    fecha_devolucion: datetime.date | None = None
+    estado: str
+
+
+def iter_libros_iniciales() -> Iterable[LibroCreate]:
+    datos = (
+        ("The Great Gatsby", "F. Scott Fitzgerald", "Clasico", True),
+        ("1984", "George Orwell", "Distopia", True),
+        ("Python Crash Course", "Eric Matthes", "Tecnico", True),
+        ("Clean Code", "Robert C. Martin", "Tecnico", False),
+        ("The Pragmatic Programmer", "Andrew Hunt", "Tecnico", True),
+    )
+    for titulo, autor, genero, disponible in datos:
+        yield LibroCreate(
+            titulo=titulo,
+            autor=autor,
+            genero=genero,
+            disponible=disponible,
         )
 
-        db.add(nuevo_usuario)
-        db.commit()
-        db.refresh(nuevo_usuario)
 
-        return nuevo_usuario
-
-
-@app.get("/libros/")
-def retrieve_data():
-    with SessionLocal() as db:
-        try:
-            libros = db.query(Book).all()
-            return {"libros": libros}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+def inicializar_base_de_datos():
+    Base.metadata.create_all(bind=engine)
+    with get_db_session() as db:
+        if db.query(Book).count() == 0:
+            logger.info("Cargando catalogo inicial de libros")
+            for libro in iter_libros_iniciales():
+                db.add(Book(**libro.model_dump()))
+        else:
+            logger.info("Catalogo existente detectado")
 
 
-@app.post("/libros/")
+def convertir_prestamo(prestamo: Loan) -> PrestamoRead:
+    return PrestamoRead(
+        id=prestamo.id,
+        usuario_id=prestamo.usuario_id,
+        libro_id=prestamo.libro_id,
+        titulo=prestamo.libro.titulo if prestamo.libro else "Desconocido",
+        usuario=prestamo.usuario.nombre if prestamo.usuario else "Desconocido",
+        fecha_prestamo=prestamo.fecha_prestamo,
+        fecha_devolucion=prestamo.fecha_devolucion,
+        estado=prestamo.estado,
+    )
+
+
+def manejar_error(error: BibliotecaError):
+    logger.warning("%s", error.detail)
+    raise HTTPException(status_code=error.status_code, detail=error.detail)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    inicializar_base_de_datos()
+    yield
+
+
+app = FastAPI(
+    title="Gestor de Bibliotecas API",
+    description="Servidor de datos para la gestion de bibliotecas.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+libros_router = APIRouter(prefix="/libros", tags=["libros"])
+usuarios_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
+prestamos_router = APIRouter(prefix="/prestamos", tags=["prestamos"])
+
+
+@usuarios_router.post("/", response_model=UsuarioRead)
+def crear_usuario(usuario: UsuarioCreate):
+    try:
+        with get_db_session() as db:
+            usuario_existente = db.query(User).filter(User.email == usuario.email).first()
+            if usuario_existente:
+                raise RecursoDuplicado("Ya existe un usuario con ese email")
+
+            nuevo_usuario = User(**usuario.model_dump())
+            db.add(nuevo_usuario)
+            db.flush()
+            db.refresh(nuevo_usuario)
+            logger.info("Usuario creado: %s", nuevo_usuario.email)
+            return nuevo_usuario
+    except BibliotecaError as error:
+        manejar_error(error)
+    except Exception as error:
+        logger.error("Error creando usuario: %s", error)
+        raise HTTPException(status_code=500, detail="Error interno")
+
+
+@usuarios_router.get("/", response_model=list[UsuarioRead])
+def listar_usuarios():
+    with get_db_session() as db:
+        return db.query(User).order_by(User.nombre).all()
+
+
+@libros_router.get("/", response_model=ListadoLibros)
+def listar_libros():
+    with get_db_session() as db:
+        libros = db.query(Book).order_by(Book.titulo).all()
+        return {"libros": libros}
+
+
+@libros_router.post("/", response_model=LibroRead)
 def crear_libro(libro: LibroCreate):
-    with SessionLocal() as db:
-        try:
-            nuevo_libro = Book(
-                titulo=libro.titulo,
-                autor=libro.autor,
-                genero=libro.genero,
-                disponible=libro.disponible,
-            )
+    try:
+        with get_db_session() as db:
+            nuevo_libro = Book(**libro.model_dump())
             db.add(nuevo_libro)
-            db.commit()
+            db.flush()
             db.refresh(nuevo_libro)
+            logger.info("Libro creado: %s", nuevo_libro.etiqueta)
             return nuevo_libro
+    except Exception as error:
+        logger.error("Error creando libro: %s", error)
+        raise HTTPException(status_code=500, detail="Error interno")
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@app.post("/prestamos/")
-def create_loan(libro_id: int, usuario_id: int):
-    with SessionLocal() as db:
-        try:
+@prestamos_router.post("/", response_model=PrestamoRead)
+def crear_prestamo(libro_id: int, usuario_id: int):
+    try:
+        with get_db_session() as db:
             usuario = db.query(User).filter(User.id == usuario_id).first()
             if not usuario:
-                raise HTTPException(status_code=404, detail="Este usuario no existe")
+                raise RecursoNoEncontrado("Este usuario no existe")
+            if not usuario.esta_activo:
+                raise PrestamoNoPermitido("Este usuario no esta activo")
 
             libro = db.query(Book).filter(Book.id == libro_id).first()
-
             if not libro:
-                raise HTTPException(status_code=404, detail="Este libro no existe")
-
+                raise RecursoNoEncontrado("Este libro no existe")
             if not libro.disponible:
-                raise HTTPException(status_code=400, detail="Este libro no está disponible")
+                raise PrestamoNoPermitido("Este libro no esta disponible")
 
             libro.disponible = False
             nuevo_prestamo = Loan(
-                usuario_id=str(usuario_id),
+                usuario_id=usuario_id,
                 libro_id=libro_id,
                 fecha_prestamo=datetime.date.today(),
                 estado="Activo",
             )
             db.add(nuevo_prestamo)
-            db.commit()
+            db.flush()
             db.refresh(nuevo_prestamo)
-
-            return {
-                "message": "Préstamo creado correctamente",
-                "prestamo_id": nuevo_prestamo.id,
-                "libro": libro,
-            }
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+            logger.info("Prestamo creado: usuario=%s libro=%s", usuario_id, libro_id)
+            return convertir_prestamo(nuevo_prestamo)
+    except BibliotecaError as error:
+        manejar_error(error)
+    except Exception as error:
+        logger.error("Error creando prestamo: %s", error)
+        raise HTTPException(status_code=500, detail="Error interno")
 
 
-@app.get("/prestamos/historial")
+@prestamos_router.get("/", response_model=list[PrestamoRead])
+def listar_prestamos():
+    with get_db_session() as db:
+        prestamos = db.query(Loan).order_by(Loan.fecha_prestamo.desc(), Loan.id.desc()).all()
+        return [convertir_prestamo(prestamo) for prestamo in prestamos]
+
+
+@prestamos_router.get("/historial", response_model=dict[str, list[PrestamoRead]])
 def historial_prestamos(usuario_id: int):
-    with SessionLocal() as db:
-        usuario = db.query(User).filter(User.id == usuario_id).first()
-        if not usuario:
-            raise HTTPException(status_code=404, detail="Este usuario no existe")
+    try:
+        with get_db_session() as db:
+            usuario = db.query(User).filter(User.id == usuario_id).first()
+            if not usuario:
+                raise RecursoNoEncontrado("Este usuario no existe")
 
-        prestamos = db.query(Loan).filter(Loan.usuario_id == str(usuario_id)).all()
-
-        resultado = []
-        for prestamo in prestamos:
-            libro = db.query(Book).filter(Book.id == prestamo.libro_id).first()
-            resultado.append({
-                "usuario_id": prestamo.usuario_id,
-                "libro_id": prestamo.libro_id,
-                "titulo": libro.titulo if libro else "Desconocido",
-                "fecha_prestamo": prestamo.fecha_prestamo,
-                "fecha_devolucion": prestamo.fecha_devolucion,
-                "estado": prestamo.estado,
-            })
-
-        return {"prestamos": resultado}
+            prestamos = (
+                db.query(Loan)
+                .filter(Loan.usuario_id == usuario_id)
+                .order_by(Loan.fecha_prestamo.desc(), Loan.id.desc())
+                .all()
+            )
+            return {"prestamos": [convertir_prestamo(prestamo) for prestamo in prestamos]}
+    except BibliotecaError as error:
+        manejar_error(error)
 
 
-
-
+app.include_router(libros_router)
+app.include_router(usuarios_router)
+app.include_router(prestamos_router)
