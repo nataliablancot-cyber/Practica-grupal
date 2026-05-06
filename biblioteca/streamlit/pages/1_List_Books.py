@@ -10,12 +10,15 @@ st.write("Listado de libros disponibles en la biblioteca.")
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
-try:
+
+@st.cache_data(ttl=30)
+def obtener_libros():
     response = requests.get(f"{API_URL}/libros/", timeout=10)
     response.raise_for_status()
+    return response.json().get("libros", [])
 
-    data = response.json()
-    libros = data.get("libros", [])
+try:
+    libros = obtener_libros()
 
     if libros:
         df = pd.DataFrame(libros)
