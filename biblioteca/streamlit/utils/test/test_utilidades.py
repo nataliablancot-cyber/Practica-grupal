@@ -30,4 +30,3 @@ def test_filtrar_libros_por_titulo():
 def test_validar_libro():
     assert validar_libro("1984", "George Orwell", "Distopía") == True
     assert validar_libro("", "George Orwell", "Distopía") == False
-
