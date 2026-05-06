@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install FastAPI dependencies
+        run: pip install -r biblioteca/fastapi/requirements.txt
+
+      - name: Install Streamlit dependencies
+        run: pip install -r biblioteca/streamlit/requirements.txt
+
+      - name: Run tests with coverage
+        run: pytest
